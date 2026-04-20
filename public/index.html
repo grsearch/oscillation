@@ -535,26 +535,21 @@ function runBacktest(klines, symbol) {
   const recordDayLoss = (ts, pnl) => { const k=dayKey(ts); dailyLoss[k]=(dailyLoss[k]||0)+pnl; };
   const dailyLimitUSDT = P.positionSize * (P.dailyLossLimit / 100) * P.leverage;
 
-  for (let i = Math.max(P.bbPeriod, 50); i < closes.length - 1; i++) {
+  for (let i = P.bbPeriod; i < closes.length - 1; i++) {
     const price   = closes[i];
     const high    = highs[i];
     const low     = lows[i];
     const barTime = times[i];
     const nextOpen = opens[i + 1];
     const nextTime = times[i + 1];
-    const trend = ema50[i]; // EMA trend filter
 
     if (!pos) {
       if (getDayLoss(barTime) <= -dailyLimitUSDT) continue;
 
-      // Trend-filtered signals: only long when price > EMA50, short when price < EMA50
-      const trendUp   = trend !== null && price > trend;
-      const trendDown = trend !== null && price < trend;
+      const longSignal  = rsi[i] < P.rsiOversold  && bb.lower[i] && price <= bb.lower[i] * 1.005;
+      const shortSignal = rsi[i] > P.rsiOverbought && bb.upper[i] && price >= bb.upper[i] * 0.995;
 
-      const longSignal  = trendUp   && rsi[i] < P.rsiOversold  && bb.lower[i] && price <= bb.lower[i] * 1.005;
-      const shortSignal = trendDown && rsi[i] > P.rsiOverbought && bb.upper[i] && price >= bb.upper[i] * 0.995;
-
-      // Skip if both fire simultaneously (ambiguous — don't trade)
+      // Skip if both fire simultaneously (ambiguous)
       if (longSignal && shortSignal) continue;
 
       if (longSignal || shortSignal) {
@@ -591,10 +586,8 @@ function runBacktest(klines, symbol) {
 
       // Reverse signal check (uses close for signal, nextOpen for fill)
       if (!exitReason) {
-        const trendUp   = ema50[i] !== null && price > ema50[i];
-        const trendDown = ema50[i] !== null && price < ema50[i];
-        const reverseLong  = pos.dir === 'SHORT' && trendUp   && rsi[i] < P.rsiOversold  && bb.lower[i] && price <= bb.lower[i] * 1.005;
-        const reverseShort = pos.dir === 'LONG'  && trendDown && rsi[i] > P.rsiOverbought && bb.upper[i] && price >= bb.upper[i] * 0.995;
+        const reverseLong  = pos.dir === 'SHORT' && rsi[i] < P.rsiOversold  && bb.lower[i] && price <= bb.lower[i] * 1.005;
+        const reverseShort = pos.dir === 'LONG'  && rsi[i] > P.rsiOverbought && bb.upper[i] && price >= bb.upper[i] * 0.995;
         if (reverseLong || reverseShort) {
           exitReason = 'SIGNAL';
           // Exit at next open (market order on signal)

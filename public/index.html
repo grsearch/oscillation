@@ -771,9 +771,13 @@ async function doScan(force){
     coins=d.coins||[];
     scanCountdown=Math.floor((d.nextScanIn||0)/1000);
     renderCoins();
-    if(coins.length&&!klCache[coins[selIdx]?.symbol+'_'+curInterval+'_'+curLimit])await loadKlines();
+    // loadKlines is handled by init() unified loop; only call if already initialized
+    if(_initialized && coins.length && !klCache[coins[selIdx]?.symbol+'_'+curInterval+'_'+curLimit]){
+      await loadKlines();
+    }
   }catch(e){console.error(e)}
 }
+let _initialized = false;
 function forceScan(){doScan(true)}
 
 async function loadKlines(){
@@ -837,10 +841,10 @@ function renderChart(){
   drawRSI(rsi);
   updateKPIs(trades);
   updateDailyLimitBar();
-  // Only update non-active tabs if their content is visible
-  if(document.getElementById('tab-pnl').style.display!=='none') updatePnL();
-  if(document.getElementById('tab-trades').style.display!=='none') updateTradeLog();
-  if(document.getElementById('tab-risk').style.display!=='none') updateRiskPanel();
+  // Always update data; canvas renders only matter when tabs are visible
+  updatePnL();
+  updateTradeLog();
+  updateRiskPanel();
 }
 
 function getCtx(id,h){
@@ -1247,11 +1251,13 @@ function switchTab(id,el){
   ['overview','pnl','strategy','trades','risk'].forEach(t=>{
     document.getElementById('tab-'+t).style.display=t===id?'block':'none';
   });
-  // Re-render after display change so canvas sizes compute correctly
-  if(id==='overview') setTimeout(renderChart, 0);
-  if(id==='pnl')      setTimeout(updatePnL,    0);
-  if(id==='trades')   setTimeout(updateTradeLog,0);
-  if(id==='risk')     setTimeout(updateRiskPanel,0);
+  // Use requestAnimationFrame so browser reflows before canvas measures width
+  requestAnimationFrame(()=>{
+    if(id==='overview') renderChart();
+    if(id==='pnl')      updatePnL();
+    if(id==='trades')   updateTradeLog();
+    if(id==='risk')     updateRiskPanel();
+  });
 }
 
 function chgIv(iv,el){
@@ -1393,32 +1399,53 @@ async function init(){
 
   await doScan(true);
   if(coins.length){
-    await loadKlines();
-    // Backtest all other coins in background
-    const others = coins.filter((_,i)=>i!==selIdx);
-    showLoading(`加载数据 0/${others.length}`);
-    for(let i=0;i<others.length;i++){
-      const sym=others[i].symbol;
-      setLoadingProgress(Math.round((i/others.length)*80), `加载 ${sym} (${i+1}/${others.length})`);
+    showLoading('正在加载第一个币种...');
+    // Load and backtest ALL coins (including selIdx) in one unified loop
+    allTrades = [];
+    for(let i=0;i<coins.length;i++){
+      const sym=coins[i].symbol;
+      setLoadingProgress(Math.round((i/coins.length)*90), `加载 ${sym} (${i+1}/${coins.length})`);
       try{
-        const r=await fetch(`/api/klines/${sym}?interval=${curInterval}&limit=${curLimit}`);
-        klCache[sym+'_'+curInterval+'_'+curLimit]=await r.json();
-        const frRes=await fetch(`/api/fundingrate/${sym}?limit=200`);
-        fundingCache[sym]=await frRes.json();
-        setLoadingProgress(Math.round(((i+0.6)/others.length)*80), `回测 ${sym}`);
-        const{trades}=runBacktest(klCache[sym+'_'+curInterval+'_'+curLimit],sym);
+        // Load klines
+        if(!klCache[sym+'_'+curInterval+'_'+curLimit]){
+          const r=await fetch(`/api/klines/${sym}?interval=${curInterval}&limit=${curLimit}`);
+          const kl=await r.json();
+          if(!Array.isArray(kl)||kl.length<10){
+            console.warn(sym,'klines invalid, skipping');
+            continue;
+          }
+          klCache[sym+'_'+curInterval+'_'+curLimit]=kl;
+        }
+        // Load funding rates
+        if(!fundingCache[sym]){
+          const fr=await fetch(`/api/fundingrate/${sym}?limit=200`);
+          fundingCache[sym]=await fr.json();
+        }
+        setLoadingProgress(Math.round(((i+0.7)/coins.length)*90), `回测 ${sym}`);
+        const kl=klCache[sym+'_'+curInterval+'_'+curLimit];
+        const {trades}=runBacktest(kl, sym);
         allTrades=allTrades.concat(trades);
-      }catch(e){}
+        console.log(sym, '回测完成,', trades.length,'笔交易');
+      }catch(e){
+        console.error(sym,'加载失败:', e.message);
+      }
     }
-    setLoadingProgress(100,'完成');
-    setTimeout(()=>{
-      hideLoading();
-      updatePnL();
-      updateTradeLog();
-      updateRiskPanel();
-      updateDailyLimitBar();
-    }, 400);
+    setLoadingProgress(100,'回测完成');
+    console.log('全部回测完成, allTrades:', allTrades.length);
+
+    // Render the first coin's chart
+    if(klCache[coins[selIdx].symbol+'_'+curInterval+'_'+curLimit]){
+      renderChart();
+    }
+    // Force-update all data panels
+    updatePnL();
+    updateTradeLog();
+    updateRiskPanel();
+    updateDailyLimitBar();
+
+    setTimeout(hideLoading, 500);
   }
+  _initialized = true;
   setInterval(updateScanTimer,1000);
 }
 

@@ -151,6 +151,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 .dlb-row{display:flex;justify-content:space-between;font-size:10px;margin-bottom:6px}
 .dlb-track{height:6px;border-radius:3px;background:rgba(255,255,255,.06)}
 .dlb-fill{height:100%;border-radius:3px;transition:.3s}
+
+/* Toast notification */
+#toast{position:fixed;bottom:24px;right:24px;background:rgba(11,17,32,.96);border:1px solid rgba(0,227,150,.25);border-radius:8px;padding:10px 16px;font-size:11px;color:var(--green);display:flex;align-items:center;gap:8px;pointer-events:none;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;z-index:9999}
+#toast.show{opacity:1;transform:translateY(0)}
+#toast .toast-icon{font-size:13px}
+#toast .toast-sub{color:var(--text3);font-size:10px;margin-top:1px}
 </style>
 </head>
 <body>
@@ -304,7 +310,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 
   <!-- Risk params -->
   <div class="pg" style="margin-top:0">
-    <div class="pg-t">🛡️ 风控参数</div>
+    <div class="pg-t" style="display:flex;justify-content:space-between;align-items:center">
+      <span>🛡️ 风控参数</span>
+      <button onclick="resetParams()" style="font-size:10px;font-family:var(--mono);padding:3px 10px;border-radius:4px;border:1px solid var(--bdr);background:rgba(255,255,255,.04);color:var(--text3);cursor:pointer">↺ 恢复默认</button>
+    </div>
     <div class="sg">
       <div>
         <div class="pr"><div class="pr-h"><span class="pr-l">日最大亏损限额（占仓位比）</span><span class="pr-v" id="v-dailyLossLimit">5%</span></div><input type="range" min="1" max="20" step="0.5" value="5" oninput="uP('dailyLossLimit',this.value,'%')"></div>
@@ -360,19 +369,30 @@ let allTrades = [];
 let scanCountdown = 0;
 let scanTimerId = null;
 
-let P = {
+const P_DEFAULTS = {
   positionSize: 100,
   leverage: 10,
-  slippage: 0.05,        // % per side
+  slippage: 0.05,
   takeProfit: 1.5,
   stopLoss: 2.0,
   rsiOversold: 30,
   rsiOverbought: 70,
   bbPeriod: 20,
   bbStdDev: 2.0,
-  dailyLossLimit: 5,     // % of positionSize per day
+  dailyLossLimit: 5,
   accountSize: 1000,
 };
+function loadP() {
+  try {
+    const saved = localStorage.getItem('oscillation_params_v4');
+    if (saved) return Object.assign({}, P_DEFAULTS, JSON.parse(saved));
+  } catch(e) {}
+  return Object.assign({}, P_DEFAULTS);
+}
+function saveP() {
+  try { localStorage.setItem('oscillation_params_v4', JSON.stringify(P)); } catch(e) {}
+}
+let P = loadP();
 
 // ═══════════════════════════════════
 // INDICATORS — ROLLING (no lookahead)
@@ -1109,8 +1129,22 @@ function chgLimit(lim,el){
   loadKlines();
 }
 
+let _toastTimer = null;
+function showToast(msg, sub) {
+  const el = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  document.getElementById('toast-sub').textContent = sub || '';
+  el.classList.add('show');
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+let _upDebounce=null;
 function uP(k,v,u){
   P[k]=parseFloat(v);
+  saveP();
+  if(_upDebounce)clearTimeout(_upDebounce);
+  _upDebounce=setTimeout(()=>showToast('参数已保存，回测已更新','新参数已写入 localStorage'),400);
   document.getElementById('v-'+k).textContent=v+u;
   // Update calculated risk display
   const calcDL = document.getElementById('calcDailyLimit');
@@ -1167,7 +1201,38 @@ function updateScanTimer(){
 // ═══════════════════════════════════
 // INIT
 // ═══════════════════════════════════
+function syncSlidersToP() {
+  // Map each param key -> [slider selector, display suffix]
+  const sliderMap = {
+    positionSize: [' USDT'], leverage: ['x'], slippage: ['%'],
+    takeProfit: ['%'], stopLoss: ['%'], rsiOversold: [''], rsiOverbought: [''],
+    bbPeriod: [''], bbStdDev: ['σ'], dailyLossLimit: ['%'], accountSize: [' USDT'],
+  };
+  document.querySelectorAll('input[type=range]').forEach(el => {
+    // Match slider to param by its oninput attribute
+    const m = el.getAttribute('oninput')?.match(/uP\('(\w+)'/);
+    if (!m) return;
+    const key = m[1];
+    if (P[key] !== undefined) {
+      el.value = P[key];
+      const label = document.getElementById('v-' + key);
+      if (label) label.textContent = P[key] + (sliderMap[key]?.[0] || '');
+    }
+  });
+}
+
+function resetParams() {
+  Object.assign(P, P_DEFAULTS);
+  saveP();
+  syncSlidersToP();
+  document.getElementById('calcDailyLimit').textContent='$'+(P.positionSize*(P.dailyLossLimit/100)*P.leverage).toFixed(2);
+  document.getElementById('calcMaxLoss').textContent='$'+(P.positionSize*(P.stopLoss/100)*P.leverage).toFixed(2);
+  renderChart();
+  showToast('已恢复默认参数','所有参数已重置为出厂值');
+}
+
 async function init(){
+  syncSlidersToP();
   // Initialize calculated displays
   document.getElementById('calcDailyLimit').textContent='$'+(P.positionSize*(P.dailyLossLimit/100)*P.leverage).toFixed(2);
   document.getElementById('calcMaxLoss').textContent='$'+(P.positionSize*(P.stopLoss/100)*P.leverage).toFixed(2);
@@ -1199,5 +1264,9 @@ async function init(){
 window.addEventListener('resize',()=>renderChart());
 init();
 </script>
+<div id="toast">
+  <span class="toast-icon">✓</span>
+  <div><div id="toast-msg">参数已保存</div><div class="toast-sub" id="toast-sub"></div></div>
+</div>
 </body>
 </html>

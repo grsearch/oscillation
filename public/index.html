@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>震荡猎手 v4 · 改进版</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#060a12;--bg2:#0b1120;--bg3:#111a2e;
+  --bdr:rgba(99,60,255,.12);--bdr2:rgba(255,255,255,.05);
+  --cyan:#06d6f2;--purple:#7c3aed;--purple2:#a78bfa;
+  --green:#00e396;--red:#ff4560;--amber:#feb019;--orange:#ff6b35;
+  --text:#e2e8f0;--text2:#8b9fc3;--text3:#4a5a7a;
+  --mono:'JetBrains Mono',monospace;--body:'Noto Sans SC',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;overflow-x:hidden}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:3px}
+
+.hdr{background:linear-gradient(180deg,rgba(99,60,255,.08),transparent);border-bottom:1px solid var(--bdr);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.hdr-l{display:flex;align-items:center;gap:10px}
+.logo{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#7c3aed,#06d6f2);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700}
+.hdr-t{font-family:var(--body);font-weight:700;font-size:17px;color:#f8fafc}
+.hdr-s{font-size:9px;color:var(--text3);margin-top:1px}
+.hdr-r{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+
+.risk-banner{background:rgba(255,107,53,.08);border:1px solid rgba(255,107,53,.2);border-radius:6px;padding:6px 12px;font-size:10px;color:var(--orange);display:flex;align-items:center;gap:6px}
+
+.switch-wrap{display:flex;align-items:center;gap:8px}
+.switch-label{font-size:11px;color:var(--text2)}
+.switch{position:relative;width:46px;height:24px;cursor:pointer}
+.switch input{opacity:0;width:0;height:0}
+.switch .slider{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.08);border-radius:12px;transition:.3s}
+.switch .slider:before{content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#64748b;border-radius:50%;transition:.3s}
+.switch input:checked+.slider{background:rgba(0,227,150,.2);box-shadow:0 0 8px rgba(0,227,150,.3)}
+.switch input:checked+.slider:before{transform:translateX(22px);background:var(--green)}
+
+.status{display:flex;align-items:center;gap:6px;font-size:11px}
+.dot{width:7px;height:7px;border-radius:50%;animation:pulse 2s infinite}
+.dot-on{background:var(--green)}.dot-off{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.tabs{display:flex;border-bottom:1px solid var(--bdr2);background:rgba(0,0,0,.3)}
+.tab{padding:9px 18px;border:none;cursor:pointer;font-family:var(--mono);font-size:11px;background:transparent;color:var(--text3);border-bottom:2px solid transparent;transition:.2s}
+.tab.active{background:rgba(99,60,255,.08);color:var(--purple2);border-bottom-color:var(--purple)}
+
+.ct{padding:14px 18px;max-width:1320px;margin:0 auto}
+.slbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px}
+
+.scan-bar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.scan-timer{font-size:10px;color:var(--text3);background:rgba(255,255,255,.03);padding:4px 10px;border-radius:4px}
+.scan-btn{padding:4px 12px;border-radius:4px;font-size:10px;font-family:var(--mono);border:1px solid var(--bdr);background:rgba(99,60,255,.08);color:var(--purple2);cursor:pointer}
+.scan-btn:hover{background:rgba(99,60,255,.15)}
+
+.coin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(245px,1fr));gap:8px;margin-bottom:16px}
+.coin-card{background:rgba(255,255,255,.012);border:1px solid var(--bdr2);border-radius:8px;padding:12px 14px;cursor:pointer;transition:.2s;position:relative;overflow:hidden}
+.coin-card:hover{border-color:rgba(99,60,255,.25)}
+.coin-card.sel{background:linear-gradient(135deg,rgba(99,60,255,.12),rgba(6,214,242,.04));border-color:rgba(99,60,255,.35)}
+.coin-card.sel::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--purple)}
+.coin-sym{font-weight:600;font-size:13px;color:#f8fafc}
+.coin-meta{font-size:9px;color:var(--text3);margin-top:2px}
+.coin-row{display:flex;justify-content:space-between;align-items:flex-end;margin-top:8px}
+.coin-px{font-size:15px;font-weight:600;color:#f8fafc}
+.coin-stats{display:flex;gap:8px;font-size:10px}
+.up{color:var(--green)}.dn{color:var(--red)}.amp{color:var(--amber)}
+.rank-badge{position:absolute;top:6px;right:8px;font-size:9px;color:var(--text3);background:rgba(255,255,255,.04);padding:1px 6px;border-radius:3px}
+
+.box{background:rgba(255,255,255,.012);border:1px solid var(--bdr2);border-radius:10px;padding:16px 18px;margin-bottom:12px}
+.box-t{font-family:var(--body);font-weight:600;font-size:14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.box-t span{color:var(--text3);font-size:10px;font-weight:400;font-family:var(--mono)}
+canvas{width:100%!important;display:block}
+
+.iv-btns{display:flex;gap:3px}
+.iv-btn{padding:3px 8px;border-radius:3px;font-size:9px;font-family:var(--mono);border:1px solid var(--bdr2);background:transparent;color:var(--text3);cursor:pointer}
+.iv-btn.active{background:rgba(99,60,255,.12);color:var(--purple2);border-color:var(--purple)}
+
+.limit-btns{display:flex;gap:3px}
+.limit-btn{padding:3px 8px;border-radius:3px;font-size:9px;font-family:var(--mono);border:1px solid var(--bdr2);background:transparent;color:var(--text3);cursor:pointer}
+.limit-btn.active{background:rgba(6,214,242,.1);color:var(--cyan);border-color:var(--cyan)}
+
+.lgd{display:flex;gap:12px;font-size:9px;align-items:center}
+.lgd-d{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:3px;vertical-align:middle}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:12px}
+.kpi{background:rgba(255,255,255,.012);border:1px solid var(--bdr2);border-radius:7px;padding:10px 12px;text-align:center}
+.kpi-l{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.kpi-v{font-size:17px;font-weight:700}
+
+/* Risk warning box */
+.warn-box{background:rgba(255,107,53,.05);border:1px solid rgba(255,107,53,.15);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:10px;color:var(--orange);line-height:1.8}
+.warn-box b{color:var(--amber)}
+
+.pnl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px}
+.pnl-card{background:rgba(255,255,255,.012);border:1px solid var(--bdr2);border-radius:10px;padding:16px 18px}
+.pnl-title{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.pnl-big{font-size:26px;font-weight:700}
+.pnl-sub{font-size:11px;color:var(--text2);margin-top:4px}
+.pnl-row{display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.02)}
+.pnl-row:last-child{border:none}
+
+.dir{padding:1px 6px;border-radius:3px;font-size:9px;font-weight:600}
+.dir-long{background:rgba(0,227,150,.12);color:var(--green)}
+.dir-short{background:rgba(255,69,96,.12);color:var(--red)}
+
+.ttbl{width:100%;border-collapse:collapse;font-size:10px}
+.ttbl th{text-align:left;padding:7px 8px;color:var(--text3);border-bottom:1px solid var(--bdr2);font-weight:500}
+.ttbl td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.02)}
+.badge{padding:2px 7px;border-radius:3px;font-size:9px;font-weight:500;display:inline-block}
+.b-tp{background:rgba(0,227,150,.1);color:var(--green)}
+.b-sl{background:rgba(255,69,96,.1);color:var(--red)}
+.b-sig{background:rgba(124,58,237,.1);color:var(--purple2)}
+.b-info{background:rgba(6,214,242,.08);color:var(--cyan);font-size:9px;padding:1px 5px;border-radius:3px}
+
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:768px){.sg{grid-template-columns:1fr}}
+.pg{background:rgba(255,255,255,.012);border:1px solid var(--bdr2);border-radius:10px;padding:16px 18px;margin-bottom:12px}
+.pg-t{font-family:var(--body);font-weight:600;font-size:12px;color:var(--purple2);margin-bottom:12px}
+.pr{margin-bottom:12px}
+.pr-h{display:flex;justify-content:space-between;margin-bottom:4px}
+.pr-l{color:var(--text2);font-size:11px}.pr-v{color:var(--text);font-size:11px}
+input[type=range]{width:100%;height:3px;border-radius:2px;-webkit-appearance:none;background:rgba(255,255,255,.06);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--purple);cursor:pointer;border:2px solid var(--bg)}
+
+.logic-box{background:linear-gradient(135deg,rgba(99,60,255,.05),rgba(6,214,242,.02));border:1px solid rgba(99,60,255,.15);border-radius:10px;padding:16px 18px;margin-top:10px}
+.logic-t{font-family:var(--body);font-weight:600;font-size:12px;color:var(--purple2);margin-bottom:8px}
+.logic-i{font-size:10px;line-height:1.9;color:var(--text2);margin-bottom:3px}
+.logic-i b{font-weight:600}
+
+.footer{margin-top:24px;padding:14px 0;border-top:1px solid rgba(255,255,255,.02);font-size:9px;color:#2a3550;text-align:center;line-height:1.8}
+.no-data{color:var(--text3);font-size:11px;text-align:center;padding:36px}
+
+.sum-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:12px}
+.sum-c{background:rgba(255,255,255,.012);border:1px solid var(--bdr2);border-radius:7px;padding:12px 14px}
+.sum-l{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.sum-v{font-size:18px;font-weight:700}
+.sum-s{font-size:10px;font-weight:400;color:var(--text3)}
+
+/* Risk meter */
+.risk-meter{display:flex;gap:6px;align-items:center;margin-top:8px}
+.risk-seg{height:6px;flex:1;border-radius:3px}
+.risk-label{font-size:9px;margin-top:4px;text-align:center}
+
+.dd-bar{height:4px;border-radius:2px;background:rgba(255,69,96,.2);margin-top:4px}
+.dd-fill{height:100%;border-radius:2px;background:var(--red)}
+
+/* Daily loss limit indicator */
+.daily-limit-bar{background:rgba(255,255,255,.02);border:1px solid var(--bdr2);border-radius:8px;padding:10px 14px;margin-bottom:12px}
+.dlb-row{display:flex;justify-content:space-between;font-size:10px;margin-bottom:6px}
+.dlb-track{height:6px;border-radius:3px;background:rgba(255,255,255,.06)}
+.dlb-fill{height:100%;border-radius:3px;transition:.3s}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-l">
+    <div class="logo">⚡</div>
+    <div>
+      <div class="hdr-t">震荡猎手 <span style="color:var(--purple);font-size:11px;font-weight:400;font-family:var(--mono)">v4 · 改进版</span></div>
+      <div class="hdr-s">USDT-M 永续合约 · RSI+布林带 · 含资金费率 · 滑点 · 最大回撤 · 日亏限制</div>
+    </div>
+  </div>
+  <div class="hdr-r">
+    <div class="risk-banner">⚠ 仅供学习研究，合约交易风险极高</div>
+    <div class="switch-wrap">
+      <span class="switch-label">策略</span>
+      <label class="switch"><input type="checkbox" id="strategySwitch" onchange="toggleStrategy()"><span class="slider"></span></label>
+    </div>
+    <div class="status" id="statusBar">
+      <div class="dot dot-off" id="statusDot"></div>
+      <span id="statusText">已停止</span>
+    </div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('overview',this)">📊 市场总览</button>
+  <button class="tab" onclick="switchTab('pnl',this)">💰 盈亏统计</button>
+  <button class="tab" onclick="switchTab('strategy',this)">⚙️ 策略配置</button>
+  <button class="tab" onclick="switchTab('trades',this)">📋 交易明细</button>
+  <button class="tab" onclick="switchTab('risk',this)">🛡️ 风控面板</button>
+</div>
+
+<div class="ct">
+
+<!-- OVERVIEW -->
+<div id="tab-overview">
+  <div class="scan-bar">
+    <div class="slbl">自动扫描 TOP 10 最活跃合约</div>
+    <div class="scan-timer" id="scanTimer">下次扫描: --:--</div>
+    <button class="scan-btn" onclick="forceScan()">🔄 立即扫描</button>
+    <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+      <span style="font-size:9px;color:var(--text3)">回测K线数:</span>
+      <div class="limit-btns">
+        <button class="limit-btn" onclick="chgLimit(200,this)">200</button>
+        <button class="limit-btn active" onclick="chgLimit(500,this)">500</button>
+        <button class="limit-btn" onclick="chgLimit(1000,this)">1000</button>
+      </div>
+    </div>
+  </div>
+  <div class="coin-grid" id="coinGrid"></div>
+
+  <!-- Daily loss limit bar -->
+  <div class="daily-limit-bar" id="dailyLimitBar">
+    <div class="dlb-row">
+      <span style="color:var(--text2)">日亏损限制</span>
+      <span id="dlbStatus" style="color:var(--green)">安全</span>
+    </div>
+    <div class="dlb-row">
+      <span id="dlbCurrent" style="color:var(--text3)">当日净损益: $0.00</span>
+      <span id="dlbLimit" style="color:var(--text3)">限额: $0.00</span>
+    </div>
+    <div class="dlb-track"><div class="dlb-fill" id="dlbFill" style="width:0%;background:var(--green)"></div></div>
+  </div>
+
+  <div class="box">
+    <div class="box-t">
+      <div><span id="chartSymbol">-</span> <span>合约价格 & 信号</span></div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <div class="iv-btns">
+          <button class="iv-btn active" onclick="chgIv('1m',this)">1m</button>
+          <button class="iv-btn" onclick="chgIv('5m',this)">5m</button>
+          <button class="iv-btn" onclick="chgIv('15m',this)">15m</button>
+        </div>
+        <div class="lgd">
+          <span><span class="lgd-d" style="background:var(--green)"></span>做多</span>
+          <span><span class="lgd-d" style="background:var(--red)"></span>做空</span>
+          <span><span class="lgd-d" style="background:var(--amber)"></span>平仓</span>
+        </div>
+      </div>
+    </div>
+    <canvas id="priceCanvas" height="300"></canvas>
+  </div>
+  <div class="box" style="padding:12px 18px">
+    <div style="font-size:9px;color:var(--text3);margin-bottom:4px">RSI 指标</div>
+    <canvas id="rsiCanvas" height="65"></canvas>
+  </div>
+  <div class="kpi-grid" id="kpiGrid"></div>
+</div>
+
+<!-- PNL -->
+<div id="tab-pnl" style="display:none">
+  <div class="slbl">实际成交盈亏统计 · 含手续费 + 滑点 + 资金费率</div>
+  <div class="pnl-grid" id="pnlCards"></div>
+  <div class="box">
+    <div class="box-t">累计净盈亏曲线 <span>含手续费/滑点/资金费率</span></div>
+    <canvas id="eqCanvas" height="220"></canvas>
+  </div>
+  <div class="box">
+    <div class="box-t">回撤曲线 <span>最大回撤分析</span></div>
+    <canvas id="ddCanvas" height="120"></canvas>
+  </div>
+  <div class="box">
+    <div class="box-t">各币种盈亏分布</div>
+    <canvas id="coinPnlCanvas" height="180"></canvas>
+  </div>
+  <div class="box">
+    <div class="box-t">成本明细（手续费 + 滑点 + 资金费率）</div>
+    <div id="feeDetail"></div>
+  </div>
+</div>
+
+<!-- STRATEGY -->
+<div id="tab-strategy" style="display:none">
+  <div class="sg">
+    <div>
+      <div class="pg">
+        <div class="pg-t">📐 仓位参数</div>
+        <div class="pr"><div class="pr-h"><span class="pr-l">单笔仓位</span><span class="pr-v" id="v-positionSize">100 USDT</span></div><input type="range" min="10" max="2000" step="10" value="100" oninput="uP('positionSize',this.value,' USDT')"></div>
+        <div class="pr"><div class="pr-h"><span class="pr-l">杠杆倍数</span><span class="pr-v" id="v-leverage">10x</span></div><input type="range" min="1" max="50" step="1" value="10" oninput="uP('leverage',this.value,'x')"></div>
+        <div class="pr"><div class="pr-h"><span class="pr-l">滑点估算（单边）</span><span class="pr-v" id="v-slippage">0.05%</span></div><input type="range" min="0.01" max="0.5" step="0.01" value="0.05" oninput="uP('slippage',this.value,'%')"></div>
+      </div>
+      <div class="pg">
+        <div class="pg-t">📊 RSI 参数</div>
+        <div class="pr"><div class="pr-h"><span class="pr-l">超卖阈值（做多）</span><span class="pr-v" id="v-rsiOversold">30</span></div><input type="range" min="10" max="45" step="1" value="30" oninput="uP('rsiOversold',this.value,'')"></div>
+        <div class="pr"><div class="pr-h"><span class="pr-l">超买阈值（做空）</span><span class="pr-v" id="v-rsiOverbought">70</span></div><input type="range" min="55" max="90" step="1" value="70" oninput="uP('rsiOverbought',this.value,'')"></div>
+      </div>
+    </div>
+    <div>
+      <div class="pg">
+        <div class="pg-t">🎯 止盈止损</div>
+        <div class="pr"><div class="pr-h"><span class="pr-l">止盈比例</span><span class="pr-v" id="v-takeProfit">1.5%</span></div><input type="range" min="0.3" max="8" step="0.1" value="1.5" oninput="uP('takeProfit',this.value,'%')"></div>
+        <div class="pr"><div class="pr-h"><span class="pr-l">止损比例</span><span class="pr-v" id="v-stopLoss">2.0%</span></div><input type="range" min="0.3" max="8" step="0.1" value="2.0" oninput="uP('stopLoss',this.value,'%')"></div>
+      </div>
+      <div class="pg">
+        <div class="pg-t">📉 布林带参数</div>
+        <div class="pr"><div class="pr-h"><span class="pr-l">周期</span><span class="pr-v" id="v-bbPeriod">20</span></div><input type="range" min="10" max="50" step="1" value="20" oninput="uP('bbPeriod',this.value,'')"></div>
+        <div class="pr"><div class="pr-h"><span class="pr-l">标准差倍数</span><span class="pr-v" id="v-bbStdDev">2.0σ</span></div><input type="range" min="1" max="3" step="0.1" value="2.0" oninput="uP('bbStdDev',this.value,'σ')"></div>
+      </div>
+      <div class="logic-box">
+        <div class="logic-t">💡 v4 改进内容</div>
+        <div class="logic-i"><b style="color:var(--green)">✓ 修复前视偏差：</b>布林带现在只使用当前K线及之前的历史数据（滚动计算）</div>
+        <div class="logic-i"><b style="color:var(--green)">✓ 资金费率：</b>持仓跨越每8小时结算时间点时，自动扣除资金费率成本</div>
+        <div class="logic-i"><b style="color:var(--green)">✓ 滑点模型：</b>开仓和平仓各额外扣除单边滑点（默认0.05%）</div>
+        <div class="logic-i"><b style="color:var(--green)">✓ 最大回撤：</b>实时计算账户权益最大回撤，并在盈亏面板展示回撤曲线</div>
+        <div class="logic-i"><b style="color:var(--green)">✓ 日亏损限制：</b>当日净亏损超过账户设定比例时，停止新开仓</div>
+        <div class="logic-i"><b style="color:var(--amber)">注：</b>回测数据量越大，统计结论越可靠，建议选500条以上K线</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Risk params -->
+  <div class="pg" style="margin-top:0">
+    <div class="pg-t">🛡️ 风控参数</div>
+    <div class="sg">
+      <div>
+        <div class="pr"><div class="pr-h"><span class="pr-l">日最大亏损限额（占仓位比）</span><span class="pr-v" id="v-dailyLossLimit">5%</span></div><input type="range" min="1" max="20" step="0.5" value="5" oninput="uP('dailyLossLimit',this.value,'%')"></div>
+        <div class="pr"><div class="pr-h"><span class="pr-l">账户总资金</span><span class="pr-v" id="v-accountSize">1000 USDT</span></div><input type="range" min="100" max="50000" step="100" value="1000" oninput="uP('accountSize',this.value,' USDT')"></div>
+      </div>
+      <div>
+        <div class="pr" style="margin-top:8px;padding:10px 12px;background:rgba(255,107,53,.04);border:1px solid rgba(255,107,53,.12);border-radius:6px;font-size:10px;color:var(--text2);line-height:1.8">
+          当日亏损达到 <b id="calcDailyLimit" style="color:var(--orange)">$50.00</b> 时停止开新仓。<br>
+          单笔止损 = 仓位 × 止损% × 杠杆 = <b id="calcMaxLoss" style="color:var(--red)">$20.00</b>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TRADES -->
+<div id="tab-trades" style="display:none">
+  <div class="box" style="overflow:auto">
+    <div class="box-t">全部交易记录 <span id="tradeCount">0 笔</span></div>
+    <div id="tradeLog"></div>
+  </div>
+  <div class="sum-grid" id="sumGrid"></div>
+</div>
+
+<!-- RISK PANEL -->
+<div id="tab-risk" style="display:none">
+  <div class="warn-box">
+    <b>⚠ 重要风险提示：</b>以下指标基于历史回测数据，不代表未来实盘表现。<br>
+    合约杠杆交易可能导致超出本金的损失，请充分了解风险后谨慎操作。
+  </div>
+  <div id="riskMetrics"></div>
+</div>
+
+<div class="footer">
+  ⚠️ 本策略仅供学习参考，不构成投资建议。合约交易风险极高，杠杆会放大盈亏。<br>
+  v4改进：滚动布林带（修复前视偏差）· 资金费率 · 滑点 · 最大回撤 · 日亏限制 · 夏普比率
+</div>
+</div>
+
+<script>
+// ═══════════════════════════════════
+// CONSTANTS & STATE
+// ═══════════════════════════════════
+const FEE_RATE = 0.00045; // 0.045% per side (maker)
+let strategyOn = false;
+let coins = [];
+let selIdx = 0;
+let curInterval = "1m";
+let curLimit = 500;
+let klCache = {};
+let fundingCache = {}; // symbol -> [{fundingTime, fundingRate}]
+let allTrades = [];
+let scanCountdown = 0;
+let scanTimerId = null;
+
+let P = {
+  positionSize: 100,
+  leverage: 10,
+  slippage: 0.05,        // % per side
+  takeProfit: 1.5,
+  stopLoss: 2.0,
+  rsiOversold: 30,
+  rsiOverbought: 70,
+  bbPeriod: 20,
+  bbStdDev: 2.0,
+  dailyLossLimit: 5,     // % of positionSize per day
+  accountSize: 1000,
+};
+
+// ═══════════════════════════════════
+// INDICATORS — ROLLING (no lookahead)
+// ═══════════════════════════════════
+function calcRSI(closes, period = 14) {
+  if (closes.length < period + 1) return closes.map(() => 50);
+  const rsi = new Array(period).fill(50);
+  let avgGain = 0, avgLoss = 0;
+  for (let i = 1; i <= period; i++) {
+    const d = closes[i] - closes[i - 1];
+    d > 0 ? avgGain += d : avgLoss -= d;
+  }
+  avgGain /= period; avgLoss /= period;
+  for (let i = period; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1];
+    avgGain = (avgGain * (period - 1) + (d > 0 ? d : 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + (d < 0 ? -d : 0)) / period;
+    rsi.push(avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss));
+  }
+  return rsi;
+}
+
+// ✅ FIX: Rolling Bollinger Bands — only uses data up to bar i (no lookahead)
+function calcBB(closes, period = 20, stdDev = 2) {
+  const upper = [], lower = [], mid = [];
+  for (let i = 0; i < closes.length; i++) {
+    if (i < period - 1) { upper.push(null); lower.push(null); mid.push(null); continue; }
+    // Only use closes[i - period + 1 .. i] — strictly historical at each bar
+    const slice = closes.slice(i - period + 1, i + 1);
+    const mean = slice.reduce((a, b) => a + b, 0) / period;
+    const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / period;
+    const sd = Math.sqrt(variance);
+    mid.push(mean);
+    upper.push(mean + stdDev * sd);
+    lower.push(mean - stdDev * sd);
+  }
+  return { upper, lower, mid };
+}
+
+// ═══════════════════════════════════
+// FUNDING RATE COST CALCULATION
+// ═══════════════════════════════════
+function calcFundingCost(entryTime, exitTime, positionSize, leverage, fundingRates) {
+  // fundingRates: [{fundingTime (ms), fundingRate}] sorted ascending
+  if (!fundingRates || !fundingRates.length) return 0;
+  let cost = 0;
+  const notional = positionSize * leverage;
+  for (const fr of fundingRates) {
+    const ft = fr.fundingTime;
+    // Only count settlements that fell within the holding period
+    if (ft > entryTime && ft <= exitTime) {
+      cost += Math.abs(fr.fundingRate) * notional;
+    }
+  }
+  return cost;
+}
+
+// ═══════════════════════════════════
+// BACKTEST WITH ALL COST MODELS
+// ═══════════════════════════════════
+function runBacktest(klines, symbol) {
+  const closes = klines.map(k => k.close);
+  const opens  = klines.map(k => k.open);
+  const times  = klines.map(k => k.time);
+  const rsi = calcRSI(closes);
+  const bb  = calcBB(closes, P.bbPeriod, P.bbStdDev);
+  const fundingRates = fundingCache[symbol] || [];
+  const slippageRate = P.slippage / 100;
+
+  const trades = [];
+  let pos = null;
+  // Daily loss tracking (simulate by day bucket)
+  const dailyLoss = {};
+  const dayKey = ts => new Date(ts).toISOString().slice(0, 10);
+
+  function getDayLoss(ts) {
+    return dailyLoss[dayKey(ts)] || 0;
+  }
+  function recordDayLoss(ts, pnl) {
+    const k = dayKey(ts);
+    dailyLoss[k] = (dailyLoss[k] || 0) + pnl;
+  }
+
+  const dailyLimitUSDT = P.positionSize * (P.dailyLossLimit / 100) * P.leverage;
+
+  for (let i = P.bbPeriod; i < closes.length - 1; i++) {
+    const price = closes[i];
+    const barTime = times[i];
+    const nextOpen = opens[i + 1];
+    const nextTime = times[i + 1];
+
+    if (!pos) {
+      // Check daily loss halt
+      if (getDayLoss(barTime) <= -dailyLimitUSDT) continue;
+
+      const longSignal  = rsi[i] < P.rsiOversold  && bb.lower[i] && price <= bb.lower[i] * 1.005;
+      const shortSignal = rsi[i] > P.rsiOverbought && bb.upper[i] && price >= bb.upper[i] * 0.995;
+
+      if (longSignal || shortSignal) {
+        const dir = longSignal ? 'LONG' : 'SHORT';
+        // Apply slippage on entry (adverse)
+        const fillPrice = dir === 'LONG'
+          ? nextOpen * (1 + slippageRate)
+          : nextOpen * (1 - slippageRate);
+        const openFee = P.positionSize * FEE_RATE;
+        pos = { dir, fillPrice, signalIdx: i, entryIdx: i + 1, entryTime: nextTime, openFee };
+      }
+    } else {
+      let pnlPct = pos.dir === 'LONG'
+        ? (price - pos.fillPrice) / pos.fillPrice * 100
+        : (pos.fillPrice - price) / pos.fillPrice * 100;
+
+      const shouldTP = pnlPct >= P.takeProfit;
+      const shouldSL = pnlPct <= -P.stopLoss;
+      const reverseLong  = pos.dir === 'SHORT' && rsi[i] < P.rsiOversold  && bb.lower[i] && price <= bb.lower[i] * 1.005;
+      const reverseShort = pos.dir === 'LONG'  && rsi[i] > P.rsiOverbought && bb.upper[i] && price >= bb.upper[i] * 0.995;
+
+      if (shouldTP || shouldSL || reverseLong || reverseShort) {
+        // Exit fill price with slippage (adverse)
+        const rawExit = nextOpen;
+        const exitFillPrice = pos.dir === 'LONG'
+          ? rawExit * (1 - slippageRate)
+          : rawExit * (1 + slippageRate);
+        const exitTime = nextTime;
+
+        // P&L calculation
+        let realPnlPct = pos.dir === 'LONG'
+          ? (exitFillPrice - pos.fillPrice) / pos.fillPrice * 100
+          : (pos.fillPrice - exitFillPrice) / pos.fillPrice * 100;
+
+        const grossPnl = (realPnlPct / 100) * P.positionSize * P.leverage;
+
+        // Costs
+        const closeFee = P.positionSize * FEE_RATE;
+        const slippageCost = P.positionSize * slippageRate * 2; // open + close
+        const fundingCost = calcFundingCost(pos.entryTime, exitTime, P.positionSize, P.leverage, fundingRates);
+        const totalCost = pos.openFee + closeFee + fundingCost; // slippage already in grossPnl via fill prices
+        const netPnl = grossPnl - totalCost;
+
+        const trade = {
+          symbol: symbol || '',
+          dir: pos.dir,
+          entrySignalPrice: closes[pos.signalIdx],
+          entryFillPrice: pos.fillPrice,
+          exitSignalPrice: price,
+          exitFillPrice,
+          pnlPct: realPnlPct,
+          grossPnl,
+          fee: pos.openFee + closeFee,
+          slippageCost,
+          fundingCost,
+          totalCost,
+          netPnl,
+          entryIdx: pos.entryIdx,
+          exitIdx: i + 1,
+          entryTime: pos.entryTime,
+          exitTime,
+          reason: shouldTP ? 'TP' : shouldSL ? 'SL' : 'SIGNAL',
+          leverage: P.leverage,
+        };
+        trades.push(trade);
+        recordDayLoss(exitTime, netPnl);
+        pos = null;
+      }
+    }
+  }
+  return { trades, rsi, bb, closes };
+}
+
+// ═══════════════════════════════════
+// RISK METRICS
+// ═══════════════════════════════════
+function calcRiskMetrics(trades) {
+  if (!trades.length) return null;
+  const pnls = trades.map(t => t.netPnl);
+  const netTotal = pnls.reduce((s, v) => s + v, 0);
+  const wins = trades.filter(t => t.netPnl > 0);
+  const losses = trades.filter(t => t.netPnl < 0);
+  const winRate = wins.length / trades.length;
+
+  // Equity curve
+  const equity = [0];
+  for (const t of trades) equity.push(equity[equity.length - 1] + t.netPnl);
+
+  // Max drawdown
+  let peak = equity[0], maxDD = 0, ddStart = 0, ddEnd = 0;
+  for (let i = 0; i < equity.length; i++) {
+    if (equity[i] > peak) { peak = equity[i]; ddStart = i; }
+    const dd = peak - equity[i];
+    if (dd > maxDD) { maxDD = dd; ddEnd = i; }
+  }
+  const peakForPct = Math.max(Math.abs(peak), Math.abs(equity[0]) || 1);
+  const maxDDPct = peakForPct > 0 ? (maxDD / peakForPct) * 100 : 0;
+
+  // Drawdown series for chart
+  const ddSeries = [];
+  let runningPeak = equity[0];
+  for (const v of equity) {
+    if (v > runningPeak) runningPeak = v;
+    const rp = Math.abs(runningPeak) || 1;
+    ddSeries.push(-((runningPeak - v) / rp) * 100);
+  }
+
+  // Sharpe ratio (daily returns, annualized assuming 365 trading days)
+  const dailyMap = {};
+  for (const t of trades) {
+    const k = new Date(t.exitTime).toISOString().slice(0, 10);
+    dailyMap[k] = (dailyMap[k] || 0) + t.netPnl;
+  }
+  const dailyReturns = Object.values(dailyMap);
+  const meanDaily = dailyReturns.length ? dailyReturns.reduce((s, v) => s + v, 0) / dailyReturns.length : 0;
+  const stdDaily = dailyReturns.length > 1
+    ? Math.sqrt(dailyReturns.reduce((s, v) => s + (v - meanDaily) ** 2, 0) / dailyReturns.length)
+    : 1;
+  const sharpe = stdDaily > 0 ? (meanDaily / stdDaily) * Math.sqrt(365) : 0;
+
+  // Profit factor
+  const grossWins = wins.reduce((s, t) => s + t.netPnl, 0);
+  const grossLosses = Math.abs(losses.reduce((s, t) => s + t.netPnl, 0));
+  const profitFactor = grossLosses > 0 ? grossWins / grossLosses : grossWins > 0 ? Infinity : 0;
+
+  // Average win / loss
+  const avgWin = wins.length ? grossWins / wins.length : 0;
+  const avgLoss = losses.length ? grossLosses / losses.length : 0;
+
+  // Calmar ratio (annualized return / max drawdown)
+  const numDays = dailyReturns.length || 1;
+  const annualizedReturn = (netTotal / P.accountSize) * (365 / numDays) * 100;
+  const calmar = maxDDPct > 0 ? annualizedReturn / maxDDPct : 0;
+
+  // Total costs breakdown
+  const totalFee = trades.reduce((s, t) => s + t.fee, 0);
+  const totalSlippage = trades.reduce((s, t) => s + t.slippageCost, 0);
+  const totalFunding = trades.reduce((s, t) => s + t.fundingCost, 0);
+  const totalCosts = trades.reduce((s, t) => s + t.totalCost, 0);
+  const grossPnl = trades.reduce((s, t) => s + t.grossPnl, 0);
+
+  return {
+    netTotal, grossPnl, equity, ddSeries,
+    winRate, wins: wins.length, losses: losses.length, total: trades.length,
+    avgWin, avgLoss, profitFactor, sharpe, calmar,
+    maxDD, maxDDPct,
+    totalFee, totalSlippage, totalFunding, totalCosts,
+    annualizedReturn, dailyReturns,
+  };
+}
+
+// ═══════════════════════════════════
+// FORMAT HELPERS
+// ═══════════════════════════════════
+function fP(n){if(n==null)return'-';if(Math.abs(n)<.0001&&n!==0)return n.toExponential(4);if(Math.abs(n)<.01)return n.toFixed(8);if(Math.abs(n)<1)return n.toFixed(6);return n.toFixed(2)}
+function fPct(n){return(n>=0?'+':'')+n.toFixed(2)+'%'}
+function fUsd(n){return(n>=0?'+':'')+n.toFixed(2)}
+function fVol(n){if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(0)+'M';return(n/1e3).toFixed(0)+'K'}
+
+// ═══════════════════════════════════
+// DATA FETCHING
+// ═══════════════════════════════════
+async function doScan(force){
+  try{
+    const r=await fetch('/api/scan'+(force?'?force=1':''));
+    const d=await r.json();
+    coins=d.coins||[];
+    scanCountdown=Math.floor((d.nextScanIn||0)/1000);
+    renderCoins();
+    if(coins.length&&!klCache[coins[selIdx]?.symbol+'_'+curInterval+'_'+curLimit])await loadKlines();
+  }catch(e){console.error(e)}
+}
+function forceScan(){doScan(true)}
+
+async function loadKlines(){
+  if(!coins.length)return;
+  const sym=coins[selIdx].symbol;
+  try{
+    const r=await fetch(`/api/klines/${sym}?interval=${curInterval}&limit=${curLimit}`);
+    klCache[sym+'_'+curInterval+'_'+curLimit]=await r.json();
+    // Load funding rates if not cached
+    if(!fundingCache[sym]){
+      const fr=await fetch(`/api/fundingrate/${sym}?limit=200`);
+      fundingCache[sym]=await fr.json();
+    }
+  }catch(e){console.error(e)}
+  renderChart();
+}
+
+// ═══════════════════════════════════
+// RENDER: COINS
+// ═══════════════════════════════════
+function renderCoins(){
+  const g=document.getElementById('coinGrid');
+  g.innerHTML='';
+  coins.forEach((c,i)=>{
+    const chg=c.priceChangePercent;
+    const d=document.createElement('div');
+    d.className='coin-card'+(i===selIdx?' sel':'');
+    d.onclick=()=>{selIdx=i;renderCoins();loadKlines()};
+    d.innerHTML=`
+      <div class="rank-badge">#${i+1}</div>
+      <div class="coin-sym">${c.symbol.replace('USDT','/USDT')}</div>
+      <div class="coin-meta">24h Vol: ${fVol(c.quoteVolume)} · Score: ${c.score.toFixed(0)}</div>
+      <div class="coin-row">
+        <div class="coin-px">${fP(c.lastPrice)}</div>
+        <div class="coin-stats">
+          <span class="${chg>=0?'up':'dn'}">${fPct(chg)}</span>
+          <span class="amp">振幅${c.amplitude.toFixed(1)}%</span>
+        </div>
+      </div>`;
+    g.appendChild(d);
+  });
+}
+
+// ═══════════════════════════════════
+// RENDER: CHART
+// ═══════════════════════════════════
+function renderChart(){
+  if(!coins.length)return;
+  const sym=coins[selIdx].symbol;
+  const kl=klCache[sym+'_'+curInterval+'_'+curLimit];
+  document.getElementById('chartSymbol').textContent=sym.replace('USDT','/USDT');
+  if(!kl||kl.length<2){drawEmpty('priceCanvas','加载中...');drawEmpty('rsiCanvas','');return}
+
+  const {trades,rsi,bb,closes}=runBacktest(kl,sym);
+
+  allTrades=allTrades.filter(t=>t.symbol!==sym);
+  allTrades=allTrades.concat(trades);
+
+  drawPrice(kl,trades,bb);
+  drawRSI(rsi);
+  updateKPIs(trades);
+  updateDailyLimitBar();
+  updatePnL();
+  updateTradeLog();
+  updateRiskPanel();
+}
+
+function getCtx(id,h){
+  const c=document.getElementById(id);
+  const ctx=c.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  const W=c.parentElement.getBoundingClientRect().width-36;
+  c.width=W*dpr;c.height=h*dpr;
+  c.style.width=W+'px';c.style.height=h+'px';
+  ctx.scale(dpr,dpr);ctx.clearRect(0,0,W,h);
+  return{ctx,W,H:h};
+}
+
+function drawEmpty(id,msg){
+  const{ctx,W,H}=getCtx(id,id==='priceCanvas'?300:65);
+  ctx.fillStyle='#4a5a7a';ctx.font='11px JetBrains Mono';
+  ctx.fillText(msg,W/2-30,H/2);
+}
+
+function drawPrice(kl,trades,bb){
+  const{ctx,W,H}=getCtx('priceCanvas',300);
+  const closes=kl.map(k=>k.close);
+  const all=closes.concat(bb.upper.filter(Boolean)).concat(bb.lower.filter(Boolean));
+  const mn=Math.min(...all)*.998,mx=Math.max(...all)*1.002,rng=mx-mn||1;
+  const x=i=>(i/Math.max(closes.length-1,1))*W;
+  const y=v=>H-((v-mn)/rng)*H;
+
+  ctx.strokeStyle='rgba(255,255,255,.025)';ctx.lineWidth=1;
+  for(let r=.2;r<1;r+=.2){ctx.beginPath();ctx.moveTo(0,H*r);ctx.lineTo(W,H*r);ctx.stroke()}
+
+  ctx.fillStyle='rgba(99,60,255,.03)';ctx.beginPath();
+  let st=false;
+  bb.upper.forEach((v,i)=>{if(v!==null){st?ctx.lineTo(x(i),y(v)):ctx.moveTo(x(i),y(v));st=true}});
+  for(let i=bb.lower.length-1;i>=0;i--)if(bb.lower[i]!==null)ctx.lineTo(x(i),y(bb.lower[i]));
+  ctx.closePath();ctx.fill();
+
+  ctx.strokeStyle='rgba(99,60,255,.2)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  const bbUFirst=bb.upper.findIndex(v=>v!==null),bbLFirst=bb.lower.findIndex(v=>v!==null);
+  ctx.beginPath();bb.upper.forEach((v,i)=>{if(v!==null){i===bbUFirst?ctx.moveTo(x(i),y(v)):ctx.lineTo(x(i),y(v))}});ctx.stroke();
+  ctx.beginPath();bb.lower.forEach((v,i)=>{if(v!==null){i===bbLFirst?ctx.moveTo(x(i),y(v)):ctx.lineTo(x(i),y(v))}});ctx.stroke();
+  ctx.setLineDash([]);
+
+  for(let i=1;i<closes.length;i++){
+    ctx.strokeStyle=closes[i]>=closes[i-1]?'rgba(0,227,150,.7)':'rgba(255,69,96,.7)';
+    ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x(i-1),y(closes[i-1]));ctx.lineTo(x(i),y(closes[i]));ctx.stroke();
+  }
+
+  trades.forEach(t=>{
+    ctx.beginPath();ctx.arc(x(t.entryIdx),y(t.entryFillPrice),5,0,Math.PI*2);
+    ctx.fillStyle=t.dir==='LONG'?'#00e396':'#ff4560';ctx.fill();
+    ctx.strokeStyle='#000';ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle='#000';ctx.font='bold 7px sans-serif';ctx.textAlign='center';
+    ctx.fillText(t.dir==='LONG'?'▲':'▼',x(t.entryIdx),y(t.entryFillPrice)+2.5);
+    ctx.textAlign='start';
+    ctx.beginPath();ctx.arc(x(t.exitIdx),y(t.exitFillPrice),5,0,Math.PI*2);
+    ctx.fillStyle='#feb019';ctx.fill();ctx.strokeStyle='#000';ctx.lineWidth=1;ctx.stroke();
+    ctx.strokeStyle=t.netPnl>=0?'rgba(0,227,150,.2)':'rgba(255,69,96,.2)';
+    ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(x(t.entryIdx),y(t.entryFillPrice));ctx.lineTo(x(t.exitIdx),y(t.exitFillPrice));ctx.stroke();ctx.setLineDash([]);
+  });
+}
+
+function drawRSI(rsi){
+  const{ctx,W,H}=getCtx('rsiCanvas',65);
+  const x=i=>(i/Math.max(rsi.length-1,1))*W;
+  const y=v=>H-(v/100)*H;
+  ctx.fillStyle='rgba(99,60,255,.03)';ctx.fillRect(0,y(P.rsiOverbought),W,y(P.rsiOversold)-y(P.rsiOverbought));
+  ctx.strokeStyle='rgba(0,227,150,.2)';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(0,y(P.rsiOversold));ctx.lineTo(W,y(P.rsiOversold));ctx.stroke();
+  ctx.strokeStyle='rgba(255,69,96,.2)';ctx.beginPath();ctx.moveTo(0,y(P.rsiOverbought));ctx.lineTo(W,y(P.rsiOverbought));ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle='#a78bfa';ctx.lineWidth=1.3;ctx.beginPath();rsi.forEach((v,i)=>{i===0?ctx.moveTo(x(i),y(v)):ctx.lineTo(x(i),y(v))});ctx.stroke();
+  ctx.fillStyle='rgba(0,227,150,.4)';ctx.font='8px JetBrains Mono';ctx.fillText(P.rsiOversold,3,y(P.rsiOversold)+10);
+  ctx.fillStyle='rgba(255,69,96,.4)';ctx.fillText(P.rsiOverbought,3,y(P.rsiOverbought)-3);
+}
+
+// ═══════════════════════════════════
+// KPIs
+// ═══════════════════════════════════
+function updateKPIs(trades){
+  const m = calcRiskMetrics(trades);
+  if(!m){document.getElementById('kpiGrid').innerHTML='';return}
+  const kpis=[
+    {l:'交易次数',v:m.total,c:'var(--cyan)'},
+    {l:'胜率',v:m.winRate.toFixed?((m.winRate*100).toFixed(1)+'%'):'-',c:m.winRate>0.5?'var(--green)':'var(--red)'},
+    {l:'净盈亏',v:'$'+fUsd(m.netTotal),c:m.netTotal>=0?'var(--green)':'var(--red)'},
+    {l:'最大回撤',v:m.maxDDPct.toFixed(1)+'%',c:m.maxDDPct<10?'var(--green)':m.maxDDPct<25?'var(--amber)':'var(--red)'},
+    {l:'夏普比率',v:m.sharpe.toFixed(2),c:m.sharpe>1?'var(--green)':m.sharpe>0?'var(--amber)':'var(--red)'},
+    {l:'利润因子',v:isFinite(m.profitFactor)?m.profitFactor.toFixed(2):'∞',c:m.profitFactor>1?'var(--green)':'var(--red)'},
+    {l:'总成本',v:'$'+m.totalCosts.toFixed(2),c:'var(--amber)'},
+    {l:'资金费率',v:'$'+m.totalFunding.toFixed(2),c:'var(--orange)'},
+  ];
+  document.getElementById('kpiGrid').innerHTML=kpis.map(k=>`<div class="kpi"><div class="kpi-l">${k.l}</div><div class="kpi-v" style="color:${k.c}">${k.v}</div></div>`).join('');
+}
+
+// ═══════════════════════════════════
+// DAILY LOSS LIMIT BAR
+// ═══════════════════════════════════
+function updateDailyLimitBar(){
+  const limitUSDT = P.positionSize * (P.dailyLossLimit / 100) * P.leverage;
+  // Get today's trades
+  const today = new Date().toISOString().slice(0, 10);
+  const todayTrades = allTrades.filter(t => t.exitTime && new Date(t.exitTime).toISOString().slice(0,10) === today);
+  const todayPnl = todayTrades.reduce((s,t)=>s+t.netPnl,0);
+  const loss = Math.max(0, -todayPnl);
+  const pct = Math.min(100, (loss / limitUSDT) * 100);
+
+  document.getElementById('dlbCurrent').textContent = `当日净损益: $${todayPnl.toFixed(2)}`;
+  document.getElementById('dlbLimit').textContent = `限额: $${limitUSDT.toFixed(2)}`;
+  const fill = document.getElementById('dlbFill');
+  fill.style.width = pct + '%';
+  const color = pct < 50 ? 'var(--green)' : pct < 80 ? 'var(--amber)' : 'var(--red)';
+  fill.style.background = color;
+  const status = document.getElementById('dlbStatus');
+  if(pct >= 100){status.textContent='已触发限制';status.style.color='var(--red)';}
+  else if(pct >= 80){status.textContent='接近限制';status.style.color='var(--amber)';}
+  else{status.textContent='安全';status.style.color='var(--green)';}
+}
+
+// ═══════════════════════════════════
+// PNL TAB
+// ═══════════════════════════════════
+function updatePnL(){
+  const t=allTrades;
+  const m=calcRiskMetrics(t);
+  if(!m){document.getElementById('pnlCards').innerHTML='<div class="no-data">暂无交易数据，请等待回测完成</div>';return}
+
+  document.getElementById('pnlCards').innerHTML=`
+    <div class="pnl-card">
+      <div class="pnl-title">累计净盈亏</div>
+      <div class="pnl-big" style="color:${m.netTotal>=0?'var(--green)':'var(--red)'}">$${fUsd(m.netTotal)}</div>
+      <div class="pnl-sub">毛利 $${fUsd(m.grossPnl)} − 总成本 $${m.totalCosts.toFixed(2)}</div>
+    </div>
+    <div class="pnl-card">
+      <div class="pnl-title">交易统计</div>
+      <div class="pnl-row"><span>总交易</span><span style="color:var(--cyan)">${m.total} 笔</span></div>
+      <div class="pnl-row"><span>胜率</span><span style="color:${m.winRate>0.5?'var(--green)':'var(--red)'}">${(m.winRate*100).toFixed(1)}%</span></div>
+      <div class="pnl-row"><span>盈亏比</span><span style="color:var(--cyan)">${m.avgLoss>0?(m.avgWin/m.avgLoss).toFixed(2):'∞'}:1</span></div>
+      <div class="pnl-row"><span>利润因子</span><span style="color:${m.profitFactor>1?'var(--green)':'var(--red)'}">${isFinite(m.profitFactor)?m.profitFactor.toFixed(2):'∞'}</span></div>
+    </div>
+    <div class="pnl-card">
+      <div class="pnl-title">风险指标</div>
+      <div class="pnl-row"><span>最大回撤</span><span style="color:var(--red)">$${m.maxDD.toFixed(2)} (${m.maxDDPct.toFixed(1)}%)</span></div>
+      <div class="pnl-row"><span>夏普比率</span><span style="color:${m.sharpe>1?'var(--green)':m.sharpe>0?'var(--amber)':'var(--red)'}">${m.sharpe.toFixed(2)}</span></div>
+      <div class="pnl-row"><span>卡玛比率</span><span style="color:${m.calmar>1?'var(--green)':'var(--amber)'}">${m.calmar.toFixed(2)}</span></div>
+      <div class="pnl-row"><span>年化收益</span><span style="color:${m.annualizedReturn>0?'var(--green)':'var(--red)'}">${m.annualizedReturn.toFixed(1)}%</span></div>
+    </div>
+    <div class="pnl-card">
+      <div class="pnl-title">成本拆分</div>
+      <div class="pnl-big" style="color:var(--amber)">$${m.totalCosts.toFixed(2)}</div>
+      <div class="pnl-row"><span>手续费</span><span style="color:var(--amber)">$${m.totalFee.toFixed(2)}</span></div>
+      <div class="pnl-row"><span>滑点</span><span style="color:var(--orange)">$${m.totalSlippage.toFixed(2)}</span></div>
+      <div class="pnl-row"><span>资金费率</span><span style="color:var(--orange)">$${m.totalFunding.toFixed(2)}</span></div>
+    </div>
+  `;
+
+  drawEquity(t, m);
+  drawDrawdown(m);
+  drawCoinPnl(t);
+  drawFeeDetail(t);
+}
+
+function drawEquity(trades, m){
+  const{ctx,W,H}=getCtx('eqCanvas',220);
+  if(!trades.length){ctx.fillStyle='#4a5a7a';ctx.font='11px JetBrains Mono';ctx.fillText('无交易数据',W/2-35,H/2);return}
+  const eq=m.equity;
+  const mn=Math.min(...eq),mx=Math.max(...eq),rng=mx-mn||1;
+  const x=i=>(i/Math.max(eq.length-1,1))*W;
+  const y=v=>H-((v-mn)/rng)*H;
+
+  // Fill
+  const lastEq=eq[eq.length-1];
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  if(lastEq>=0){grad.addColorStop(0,'rgba(0,227,150,.12)');grad.addColorStop(1,'rgba(0,227,150,0)');}
+  else{grad.addColorStop(0,'rgba(255,69,96,0)');grad.addColorStop(1,'rgba(255,69,96,.12)');}
+  ctx.fillStyle=grad;ctx.beginPath();ctx.moveTo(0,H);
+  eq.forEach((v,i)=>ctx.lineTo(x(i),y(v)));ctx.lineTo(W,H);ctx.closePath();ctx.fill();
+
+  // Net line
+  ctx.strokeStyle=lastEq>=0?'#00e396':'#ff4560';ctx.lineWidth=2;
+  ctx.beginPath();eq.forEach((v,i)=>{i===0?ctx.moveTo(x(i),y(v)):ctx.lineTo(x(i),y(v))});ctx.stroke();
+
+  // Zero line
+  ctx.strokeStyle='rgba(255,255,255,.06)';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(0,y(0));ctx.lineTo(W,y(0));ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,255,255,.2)';ctx.font='8px JetBrains Mono';ctx.fillText('0',3,y(0)-3);
+}
+
+function drawDrawdown(m){
+  const{ctx,W,H}=getCtx('ddCanvas',120);
+  const dd=m.ddSeries;
+  if(!dd||!dd.length)return;
+  const mn=Math.min(...dd),rng=Math.abs(mn)||1;
+  const x=i=>(i/Math.max(dd.length-1,1))*W;
+  const y=v=>H*(1-(v/mn));
+
+  // Fill
+  ctx.fillStyle='rgba(255,69,96,.08)';
+  ctx.beginPath();ctx.moveTo(0,0);
+  dd.forEach((v,i)=>ctx.lineTo(x(i),y(v)));ctx.lineTo(W,0);ctx.closePath();ctx.fill();
+
+  // Line
+  ctx.strokeStyle='rgba(255,69,96,.6)';ctx.lineWidth=1.5;
+  ctx.beginPath();dd.forEach((v,i)=>{i===0?ctx.moveTo(x(i),y(v)):ctx.lineTo(x(i),y(v))});ctx.stroke();
+
+  // Max DD label
+  ctx.fillStyle='rgba(255,69,96,.7)';ctx.font='9px JetBrains Mono';
+  ctx.fillText(`最大回撤: ${m.maxDDPct.toFixed(1)}%`,6,14);
+}
+
+function drawCoinPnl(trades){
+  const{ctx,W,H}=getCtx('coinPnlCanvas',180);
+  if(!trades.length){ctx.fillStyle='#4a5a7a';ctx.font='11px JetBrains Mono';ctx.fillText('无数据',W/2-20,H/2);return}
+  const bySymbol={};
+  trades.forEach(t=>{
+    if(!bySymbol[t.symbol])bySymbol[t.symbol]={net:0,count:0};
+    bySymbol[t.symbol].net+=t.netPnl;bySymbol[t.symbol].count++;
+  });
+  const syms=Object.keys(bySymbol).sort((a,b)=>bySymbol[b].net-bySymbol[a].net);
+  if(!syms.length)return;
+  const maxAbs=Math.max(...syms.map(s=>Math.abs(bySymbol[s].net)),1);
+  const barH=Math.min(24,Math.floor((H-20)/syms.length)-4);
+  const startY=(H-syms.length*(barH+4))/2;
+  syms.forEach((s,i)=>{
+    const d=bySymbol[s];
+    const yy=startY+i*(barH+4);
+    const w=(d.net/maxAbs)*(W/2-80);
+    ctx.fillStyle='#8b9fc3';ctx.font='10px JetBrains Mono';ctx.textAlign='right';
+    ctx.fillText(s.replace('USDT',''),W/2-85,yy+barH/2+3);
+    ctx.fillStyle=d.net>=0?'rgba(0,227,150,.25)':'rgba(255,69,96,.25)';
+    const bx=d.net>=0?W/2-80:W/2-80+w;
+    ctx.fillRect(bx,yy,Math.abs(w),barH);
+    ctx.fillStyle=d.net>=0?'#00e396':'#ff4560';
+    ctx.fillRect(bx,yy,Math.abs(w),2);
+    ctx.textAlign='left';ctx.fillStyle=d.net>=0?'#00e396':'#ff4560';ctx.font='10px JetBrains Mono';
+    ctx.fillText('$'+fUsd(d.net),bx+Math.abs(w)+6,yy+barH/2+3);
+    ctx.textAlign='start';
+  });
+}
+
+function drawFeeDetail(trades){
+  const el=document.getElementById('feeDetail');
+  if(!trades.length){el.innerHTML='<div class="no-data">无交易数据</div>';return}
+  const bySymbol={};
+  trades.forEach(t=>{
+    if(!bySymbol[t.symbol])bySymbol[t.symbol]={fee:0,slippage:0,funding:0,count:0,gross:0,net:0};
+    bySymbol[t.symbol].fee+=t.fee;
+    bySymbol[t.symbol].slippage+=t.slippageCost;
+    bySymbol[t.symbol].funding+=t.fundingCost;
+    bySymbol[t.symbol].count++;
+    bySymbol[t.symbol].gross+=t.grossPnl;
+    bySymbol[t.symbol].net+=t.netPnl;
+  });
+  let html='<table class="ttbl"><thead><tr><th>币种</th><th>交易数</th><th>毛利</th><th>手续费</th><th>滑点</th><th>资金费</th><th>净盈亏</th></tr></thead><tbody>';
+  Object.keys(bySymbol).sort((a,b)=>bySymbol[b].net-bySymbol[a].net).forEach(s=>{
+    const d=bySymbol[s];
+    html+=`<tr>
+      <td style="font-weight:600">${s.replace('USDT','/USDT')}</td>
+      <td>${d.count}</td>
+      <td style="color:${d.gross>=0?'var(--green)':'var(--red)'}">$${fUsd(d.gross)}</td>
+      <td style="color:var(--amber)">$${d.fee.toFixed(2)}</td>
+      <td style="color:var(--orange)">$${d.slippage.toFixed(2)}</td>
+      <td style="color:var(--orange)">$${d.funding.toFixed(3)}</td>
+      <td style="color:${d.net>=0?'var(--green)':'var(--red)'};font-weight:600">$${fUsd(d.net)}</td>
+    </tr>`;
+  });
+  html+='</tbody></table>';
+  el.innerHTML=html;
+}
+
+// ═══════════════════════════════════
+// TRADES TAB
+// ═══════════════════════════════════
+function updateTradeLog(){
+  const t=allTrades;
+  document.getElementById('tradeCount').textContent=t.length+' 笔';
+  const el=document.getElementById('tradeLog');
+  if(!t.length){el.innerHTML='<div class="no-data">无交易记录</div>';return}
+  el.innerHTML=`<table class="ttbl"><thead><tr>
+    <th>#</th><th>币种</th><th>方向</th><th>开仓价</th><th>平仓价</th><th>毛利</th><th>手续费</th><th>滑点</th><th>资金费</th><th>净盈亏</th><th>原因</th>
+  </tr></thead><tbody>${t.map((x,i)=>`<tr>
+    <td style="color:var(--text3)">${i+1}</td>
+    <td style="font-weight:500">${x.symbol.replace('USDT','')}</td>
+    <td><span class="dir ${x.dir==='LONG'?'dir-long':'dir-short'}">${x.dir==='LONG'?'做多':'做空'}</span></td>
+    <td>${fP(x.entryFillPrice)}</td>
+    <td>${fP(x.exitFillPrice)}</td>
+    <td style="color:${x.grossPnl>=0?'var(--green)':'var(--red)'}">$${fUsd(x.grossPnl)}</td>
+    <td style="color:var(--amber)">$${x.fee.toFixed(2)}</td>
+    <td style="color:var(--orange)">$${x.slippageCost.toFixed(2)}</td>
+    <td style="color:var(--orange)">$${x.fundingCost.toFixed(3)}</td>
+    <td style="color:${x.netPnl>=0?'var(--green)':'var(--red)'};font-weight:600">$${fUsd(x.netPnl)}</td>
+    <td><span class="badge ${x.reason==='TP'?'b-tp':x.reason==='SL'?'b-sl':'b-sig'}">${x.reason==='TP'?'止盈':x.reason==='SL'?'止损':'信号'}</span></td>
+  </tr>`).join('')}</tbody></table>`;
+
+  const wins=t.filter(x=>x.netPnl>0),losses=t.filter(x=>x.netPnl<0);
+  const avgW=wins.length?wins.reduce((s,x)=>s+x.netPnl,0)/wins.length:0;
+  const avgL=losses.length?Math.abs(losses.reduce((s,x)=>s+x.netPnl,0)/losses.length):1;
+  const longs=t.filter(x=>x.dir==='LONG'),shorts=t.filter(x=>x.dir==='SHORT');
+  const longWr=longs.length?(longs.filter(x=>x.netPnl>0).length/longs.length*100):0;
+  const shortWr=shorts.length?(shorts.filter(x=>x.netPnl>0).length/shorts.length*100):0;
+  const sums=[
+    {l:'止盈次数',v:t.filter(x=>x.reason==='TP').length,s:' 笔',c:'var(--green)'},
+    {l:'止损次数',v:t.filter(x=>x.reason==='SL').length,s:' 笔',c:'var(--red)'},
+    {l:'信号平仓',v:t.filter(x=>x.reason==='SIGNAL').length,s:' 笔',c:'var(--purple2)'},
+    {l:'做多胜率',v:longWr.toFixed(1)+'%',s:'',c:longWr>50?'var(--green)':'var(--red)'},
+    {l:'做空胜率',v:shortWr.toFixed(1)+'%',s:'',c:shortWr>50?'var(--green)':'var(--red)'},
+    {l:'盈亏比',v:(avgW/avgL).toFixed(2),s:':1',c:'var(--cyan)'},
+  ];
+  document.getElementById('sumGrid').innerHTML=sums.map(s=>`
+    <div class="sum-c"><div class="sum-l">${s.l}</div><div class="sum-v" style="color:${s.c}">${s.v}<span class="sum-s">${s.s}</span></div></div>
+  `).join('');
+}
+
+// ═══════════════════════════════════
+// RISK PANEL
+// ═══════════════════════════════════
+function updateRiskPanel(){
+  const m=calcRiskMetrics(allTrades);
+  const el=document.getElementById('riskMetrics');
+  if(!m){el.innerHTML='<div class="no-data">暂无数据</div>';return}
+
+  const singleTradeLoss = P.positionSize * (P.stopLoss / 100) * P.leverage;
+  const ruinRisk = singleTradeLoss / P.accountSize * 100;
+
+  // Risk score (0-100, lower is better)
+  let riskScore = 0;
+  if(m.maxDDPct > 50) riskScore += 40;
+  else if(m.maxDDPct > 25) riskScore += 20;
+  else if(m.maxDDPct > 10) riskScore += 10;
+  if(P.leverage > 20) riskScore += 30;
+  else if(P.leverage > 10) riskScore += 15;
+  else riskScore += 5;
+  if(m.sharpe < 0) riskScore += 20;
+  else if(m.sharpe < 1) riskScore += 10;
+  if(ruinRisk > 5) riskScore += 10;
+  riskScore = Math.min(100, riskScore);
+  const riskLevel = riskScore >= 70 ? ['极高', 'var(--red)'] : riskScore >= 40 ? ['中高', 'var(--amber)'] : ['中等', 'var(--green)'];
+
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px">
+      <div class="pnl-card">
+        <div class="pnl-title">综合风险评级</div>
+        <div class="pnl-big" style="color:${riskLevel[1]}">${riskLevel[0]}</div>
+        <div style="margin-top:8px">
+          <div class="dlb-track"><div class="dlb-fill" style="width:${riskScore}%;background:${riskLevel[1]}"></div></div>
+          <div style="font-size:9px;color:var(--text3);margin-top:4px">风险分: ${riskScore}/100</div>
+        </div>
+      </div>
+      <div class="pnl-card">
+        <div class="pnl-title">仓位风险</div>
+        <div class="pnl-row"><span>单笔最大亏损</span><span style="color:var(--red)">$${singleTradeLoss.toFixed(2)}</span></div>
+        <div class="pnl-row"><span>占账户比例</span><span style="color:${ruinRisk>5?'var(--red)':'var(--amber)'}">${ruinRisk.toFixed(1)}%</span></div>
+        <div class="pnl-row"><span>当前杠杆</span><span style="color:${P.leverage>20?'var(--red)':P.leverage>10?'var(--amber)':'var(--green)'}">${P.leverage}x</span></div>
+        <div class="pnl-row"><span>建议单笔仓位</span><span style="color:var(--cyan)">${(P.accountSize*0.02/P.leverage).toFixed(0)} USDT</span></div>
+      </div>
+      <div class="pnl-card">
+        <div class="pnl-title">回撤分析</div>
+        <div class="pnl-row"><span>历史最大回撤</span><span style="color:var(--red)">${m.maxDDPct.toFixed(1)}%</span></div>
+        <div class="pnl-row"><span>最大回撤金额</span><span style="color:var(--red)">$${m.maxDD.toFixed(2)}</span></div>
+        <div class="pnl-row"><span>夏普比率</span><span style="color:${m.sharpe>1?'var(--green)':m.sharpe>0?'var(--amber)':'var(--red)'}">${m.sharpe.toFixed(2)}</span></div>
+        <div class="pnl-row"><span>卡玛比率</span><span style="color:${m.calmar>1?'var(--green)':'var(--amber)'}">${m.calmar.toFixed(2)}</span></div>
+      </div>
+      <div class="pnl-card">
+        <div class="pnl-title">成本侵蚀</div>
+        <div class="pnl-row"><span>总成本</span><span style="color:var(--amber)">$${m.totalCosts.toFixed(2)}</span></div>
+        <div class="pnl-row"><span>手续费占毛利</span><span style="color:var(--amber)">${m.grossPnl>0?(m.totalFee/m.grossPnl*100).toFixed(1):'N/A'}%</span></div>
+        <div class="pnl-row"><span>滑点</span><span style="color:var(--orange)">$${m.totalSlippage.toFixed(2)}</span></div>
+        <div class="pnl-row"><span>资金费率</span><span style="color:var(--orange)">$${m.totalFunding.toFixed(2)}</span></div>
+      </div>
+    </div>
+    <div class="warn-box" style="margin-top:8px">
+      <b>建议：</b>根据回测数据，在2%风险原则下，建议单笔仓位不超过 <b style="color:var(--cyan)">$${(P.accountSize * 0.02 / P.leverage).toFixed(0)} USDT</b>（账户 × 2% / 杠杆）。
+      当前设置下，连续 <b style="color:var(--red)">${Math.floor(P.accountSize / singleTradeLoss)}</b> 笔止损将导致账户归零。建议先用极小仓位验证策略，确认稳定盈利后再加仓。
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════
+function switchTab(id,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ['overview','pnl','strategy','trades','risk'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display=t===id?'block':'none';
+  });
+  if(id==='pnl')updatePnL();
+  if(id==='trades')updateTradeLog();
+  if(id==='risk')updateRiskPanel();
+}
+
+function chgIv(iv,el){
+  curInterval=iv;
+  document.querySelectorAll('.iv-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  loadKlines();
+}
+
+function chgLimit(lim,el){
+  curLimit=lim;
+  document.querySelectorAll('.limit-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  klCache={};  // clear cache, force reload
+  loadKlines();
+}
+
+function uP(k,v,u){
+  P[k]=parseFloat(v);
+  document.getElementById('v-'+k).textContent=v+u;
+  // Update calculated risk display
+  const calcDL = document.getElementById('calcDailyLimit');
+  const calcML = document.getElementById('calcMaxLoss');
+  if(calcDL) calcDL.textContent='$'+(P.positionSize*(P.dailyLossLimit/100)*P.leverage).toFixed(2);
+  if(calcML) calcML.textContent='$'+(P.positionSize*(P.stopLoss/100)*P.leverage).toFixed(2);
+  renderChart();
+}
+
+function toggleStrategy(){
+  strategyOn=document.getElementById('strategySwitch').checked;
+  document.getElementById('statusDot').className='dot '+(strategyOn?'dot-on':'dot-off');
+  document.getElementById('statusText').textContent=strategyOn?'策略运行中':'已停止';
+  document.getElementById('statusText').style.color=strategyOn?'var(--green)':'var(--red)';
+  if(strategyOn){startAutoRefresh()}else{stopAutoRefresh()}
+}
+
+let autoRefreshId=null;
+function startAutoRefresh(){
+  stopAutoRefresh();
+  autoRefreshId=setInterval(async()=>{
+    await doScan(false);
+    for(let i=0;i<coins.length;i++){
+      const sym=coins[i].symbol;
+      try{
+        const r=await fetch(`/api/klines/${sym}?interval=${curInterval}&limit=${curLimit}`);
+        klCache[sym+'_'+curInterval+'_'+curLimit]=await r.json();
+        if(!fundingCache[sym]){
+          const fr=await fetch(`/api/fundingrate/${sym}?limit=200`);
+          fundingCache[sym]=await fr.json();
+        }
+      }catch(e){}
+    }
+    allTrades=[];
+    for(let i=0;i<coins.length;i++){
+      const sym=coins[i].symbol;
+      const kl=klCache[sym+'_'+curInterval+'_'+curLimit];
+      if(kl&&kl.length>P.bbPeriod){
+        const{trades}=runBacktest(kl,sym);
+        allTrades=allTrades.concat(trades);
+      }
+    }
+    renderChart();
+  },30000);
+}
+function stopAutoRefresh(){if(autoRefreshId){clearInterval(autoRefreshId);autoRefreshId=null}}
+
+function updateScanTimer(){
+  if(scanCountdown>0)scanCountdown--;
+  const m=Math.floor(scanCountdown/60),s=scanCountdown%60;
+  document.getElementById('scanTimer').textContent=`下次扫描: ${m}:${s.toString().padStart(2,'0')}`;
+}
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+async function init(){
+  // Initialize calculated displays
+  document.getElementById('calcDailyLimit').textContent='$'+(P.positionSize*(P.dailyLossLimit/100)*P.leverage).toFixed(2);
+  document.getElementById('calcMaxLoss').textContent='$'+(P.positionSize*(P.stopLoss/100)*P.leverage).toFixed(2);
+
+  await doScan(true);
+  if(coins.length){
+    await loadKlines();
+    // Backtest all other coins in background
+    for(let i=0;i<coins.length;i++){
+      if(i===selIdx)continue;
+      const sym=coins[i].symbol;
+      try{
+        const r=await fetch(`/api/klines/${sym}?interval=${curInterval}&limit=${curLimit}`);
+        klCache[sym+'_'+curInterval+'_'+curLimit]=await r.json();
+        const frRes=await fetch(`/api/fundingrate/${sym}?limit=200`);
+        fundingCache[sym]=await frRes.json();
+        const{trades}=runBacktest(klCache[sym+'_'+curInterval+'_'+curLimit],sym);
+        allTrades=allTrades.concat(trades);
+      }catch(e){}
+    }
+    updatePnL();
+    updateTradeLog();
+    updateRiskPanel();
+    updateDailyLimitBar();
+  }
+  setInterval(updateScanTimer,1000);
+}
+
+window.addEventListener('resize',()=>renderChart());
+init();
+</script>
+</body>
+</html>

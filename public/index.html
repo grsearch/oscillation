@@ -170,6 +170,17 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 </head>
 <body>
 
+<div id="loadingOverlay">
+  <div class="loading-box">
+    <div class="loading-title">⚡ 回测运行中...</div>
+    <div class="loading-bar-track"><div class="loading-bar-fill" id="loadingBar" style="width:0%"></div></div>
+    <div class="loading-sub" id="loadingSub">正在加载数据</div>
+  </div>
+</div>
+<div id="toast">
+  <span class="toast-icon">✓</span>
+  <div><div id="toast-msg">参数已保存</div><div class="toast-sub" id="toast-sub"></div></div>
+</div>
 <div class="hdr">
   <div class="hdr-l">
     <div class="logo">⚡</div>
@@ -826,9 +837,10 @@ function renderChart(){
   drawRSI(rsi);
   updateKPIs(trades);
   updateDailyLimitBar();
-  updatePnL();
-  updateTradeLog();
-  updateRiskPanel();
+  // Only update non-active tabs if their content is visible
+  if(document.getElementById('tab-pnl').style.display!=='none') updatePnL();
+  if(document.getElementById('tab-trades').style.display!=='none') updateTradeLog();
+  if(document.getElementById('tab-risk').style.display!=='none') updateRiskPanel();
 }
 
 function getCtx(id,h){
@@ -1235,9 +1247,11 @@ function switchTab(id,el){
   ['overview','pnl','strategy','trades','risk'].forEach(t=>{
     document.getElementById('tab-'+t).style.display=t===id?'block':'none';
   });
-  if(id==='pnl')updatePnL();
-  if(id==='trades')updateTradeLog();
-  if(id==='risk')updateRiskPanel();
+  // Re-render after display change so canvas sizes compute correctly
+  if(id==='overview') setTimeout(renderChart, 0);
+  if(id==='pnl')      setTimeout(updatePnL,    0);
+  if(id==='trades')   setTimeout(updateTradeLog,0);
+  if(id==='risk')     setTimeout(updateRiskPanel,0);
 }
 
 function chgIv(iv,el){
@@ -1397,11 +1411,13 @@ async function init(){
       }catch(e){}
     }
     setLoadingProgress(100,'完成');
-    setTimeout(hideLoading, 400);
-    updatePnL();
-    updateTradeLog();
-    updateRiskPanel();
-    updateDailyLimitBar();
+    setTimeout(()=>{
+      hideLoading();
+      updatePnL();
+      updateTradeLog();
+      updateRiskPanel();
+      updateDailyLimitBar();
+    }, 400);
   }
   setInterval(updateScanTimer,1000);
 }
@@ -1409,16 +1425,5 @@ async function init(){
 window.addEventListener('resize',()=>renderChart());
 init();
 </script>
-<div id="loadingOverlay">
-  <div class="loading-box">
-    <div class="loading-title">⚡ 回测运行中...</div>
-    <div class="loading-bar-track"><div class="loading-bar-fill" id="loadingBar" style="width:0%"></div></div>
-    <div class="loading-sub" id="loadingSub">正在加载数据</div>
-  </div>
-</div>
-<div id="toast">
-  <span class="toast-icon">✓</span>
-  <div><div id="toast-msg">参数已保存</div><div class="toast-sub" id="toast-sub"></div></div>
-</div>
 </body>
 </html>

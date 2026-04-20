@@ -14,9 +14,22 @@ async function scanTopVolatile() {
   if (scanning) return topCoins;
   scanning = true;
   try {
-    const res = await axios.get(`${BINANCE_FUTURES}/fapi/v1/ticker/24hr`);
+    // Fetch exchange info to get only actively-trading contracts
+    const [tickerRes, infoRes] = await Promise.all([
+      axios.get(`${BINANCE_FUTURES}/fapi/v1/ticker/24hr`),
+      axios.get(`${BINANCE_FUTURES}/fapi/v1/exchangeInfo`),
+    ]);
+    // Build a Set of symbols currently in TRADING status
+    const tradingSymbols = new Set(
+      infoRes.data.symbols
+        .filter(s => s.status === 'TRADING' && s.contractType === 'PERPETUAL')
+        .map(s => s.symbol)
+    );
+    const res = { data: tickerRes.data };
     const usdt = res.data
-      .filter(t => t.symbol.endsWith("USDT") && parseFloat(t.quoteVolume) > 50000000)
+      .filter(t => t.symbol.endsWith("USDT")
+        && tradingSymbols.has(t.symbol)          // only active perpetuals
+        && parseFloat(t.quoteVolume) > 50000000)
       .map(t => {
         const last = parseFloat(t.lastPrice);
         const high = parseFloat(t.highPrice);
